@@ -22,32 +22,24 @@ class PlotRoutine:
         rotate: int, degree of label rotation (Bar plot)
 
     """
-    def __init__(self, dataframe, x_axis,
-                 y_axis, x_label, y_label, title):
+    def __init__(self, **kwargs):
         
-        self.data = dataframe
-        self.x_axis = x_axes
-        self.y_axis = y_axes
-        self.x_label = x_label
-        self.y_label = y_label
-        self.title = title
-        self.style = self._make_plot_style(self)
+        self.style_list = ['seaborn-whitegrid', 'style_sheet.mplstyle']
+        self.style = self._make_plot_style()
 
-    def _add_labels(self,ax):
+    def _add_labels(self, ax):
         """
         Function to add labels and title to plots. 
         Called from inside the `make_x_plot` functions.
         Arguements: ax the axis plot in matplotlib.
         Returns: None
         """
-        ax.set_ylabel(self.y_label)
-        ax.set_xlabel(self.x_label)
-        ax.set_title(self.title)
+        plt.ylabel(self.y_label)
+        plt.xlabel(self.x_label)
+        plt.title(self.title)
         plt.tight_layout()
         
-    def _make_plot_style(self,
-                         original_style='white_background',
-                         modify_style='style_sheet.mplstyle'):
+    def _make_plot_style(self):
         """
         Modify the plotting style sheet in matplotlib. 
         
@@ -59,16 +51,21 @@ class PlotRoutine:
                 overwrite the default style
         Returns: None
         """
-        plt.use.style([original_style, modify_style])
+        plt.style.use(self.style_list)
         
-    def _make_annotation_format(self, **kwargs):
+    def _make_annotation_format(self, y_value, **kwargs):
         """
+        YOU NEED AN ERROR TO RAISE IF NO ANNOTATION FORMAT IS GIVEN
+        
         Function to format annotations for plots
         
         Arguements: None
         
         Returns: label, formatted using kwargs
         """
+        if 'money' in kwargs:
+            label = f"${int(y_value):,}"
+                
         if 'int' in kwargs:
             label = f"{float(y_value):.0f}"
             if 'money' in kwargs:
@@ -96,12 +93,12 @@ class PlotRoutine:
         MIGHT NOT NEED THE RETURN LINE!!!!
         """
         
-        return plt.figtext(0.5,
-                           -0.05, 
+        return plt.figtext(0.48,
+                           -0.02, 
                            kwargs['caption'],
                            wrap=True,
                            horizontalalignment='center', 
-                           fontsize=14)
+                           fontsize=10)
         
         
         

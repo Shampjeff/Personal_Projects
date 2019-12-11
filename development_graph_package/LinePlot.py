@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
-from .GeneralPlot import PlotRoutine
+from GeneralPlot import PlotRoutine
 
 class LinePlot(PlotRoutine):
     """
@@ -13,14 +13,20 @@ class LinePlot(PlotRoutine):
         
     """
     
-    def __init__(self, *args, **kwargs):
+    def __init__(self, x_axis, y_axis,
+                 x_label, y_label, title,**kwargs):
         
-        PlotRoutine.__init__(self, dataframe, x_axis,
-                             y_axis, x_label, y_label, title):
+        self.x_axis = x_axis
+        self.y_axis = y_axis
+        self.x_label = x_label
+        self.y_label = y_label
+        self.title = title
+        
+        PlotRoutine.__init__(self, **kwargs)
         
     
     def make_line_plot(self, hue=None, annot_labels=None, 
-                       annot_values=None, *args, **kwargs):
+                       annot_values=None, annot_x_value=None, **kwargs):
         """
         Function to make an x,y line plot from a pandas dataframe.
         
@@ -31,7 +37,7 @@ class LinePlot(PlotRoutine):
         
         Returns: None
         """
-        plt.figure(figsize=(12,8))
+        plt.figure(figsize=(8,4))
         ax = sns.lineplot(x=self.x_axis,
                           y=self.y_axis,
                           hue=hue)
@@ -39,17 +45,18 @@ class LinePlot(PlotRoutine):
         if annot_labels != None:
             for i in range(len(annot_labels)):
                 ax.annotate(
-                    s=f"{annot_labels[i].title()}: {annot_values[i]:.1f}", 
-                    xy=(x_value, annot_values[i]), 
-                    fontsize=14,
-                    xytext=(10,5),         
-                    textcoords="offset points")
-
-        _make_annotation_format(self, **kwargs)
+                s=f"{annot_labels[i].title()}: {self._make_annotation_format(annot_values[i],**kwargs)}", 
+                    xy=(annot_x_value, annot_values[i]), 
+                    fontsize=10,
+                    xytext=(10,3),         
+                    textcoords="offset points"
+                            )
+                
+        
         
         if 'caption' in kwargs:
-            _make_caption(self, **kwargs)
+            self._make_caption(**kwargs)
             
         plt.legend(loc='upper left')
-        _add_labels(self, ax)
+        self._add_labels(ax)
         

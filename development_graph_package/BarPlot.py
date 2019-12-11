@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
-from .GeneralPlot import PlotRoutine
+from GeneralPlot import PlotRoutine
 
 class BarPlot(PlotRoutine):
     """
@@ -17,13 +17,20 @@ class BarPlot(PlotRoutine):
         make_bar_plot: Displays bar plot of sorted values (ascending) 
         make_hist_plot: Display a histogram or univariate data
     """
-    def __init__(self, *args, **kwargs):
+    def __init__(self, dataframe, x_axis,
+                 y_axis, x_label, y_label, 
+                 title,**kwargs):
         
+        self.data = dataframe
+        self.x_axis = x_axis
+        self.y_axis = y_axis
+        self.x_label = x_label
+        self.y_label = y_label
+        self.title = title
         # do I define or re-define the args and kwargs 
         #as self.attributes? Will that make them easier to access??
         
-        PlotRoutine.__init__(self, dataframe, x_axis,
-                             y_axis, x_label, y_label, title):
+        PlotRoutine.__init__(self, **kwargs)
     
     def _add_bar_annotation(self, ax, **kwargs):
         """
@@ -40,7 +47,7 @@ class BarPlot(PlotRoutine):
             va = 'bottom'
             spacing=2
             
-            label = _make_annotation_format(self, **kwargs)
+            label = self._make_annotation_format(y_value, **kwargs)
             
             ax.annotate(
                 label,                      
@@ -63,21 +70,21 @@ class BarPlot(PlotRoutine):
         
         """
         df = self.data.sort_values(self.y_axis)
-        plt.figure(figsize=(12,8))
+        plt.figure(figsize=(6,4))
         ax = sns.barplot(x=self.x_axis,
                          y=self.y_axis,
                          hue=hue,
                          data=df,
                          ci=None)
         if 'annot' in kwargs:
-            _add_bar_annotation(self, ax, **kwargs)
+            self._add_bar_annotation(ax, **kwargs)
         if 'caption' in kwargs:    
-            _make_caption(self, **kwargs)
+            self._make_caption(**kwargs)
         if 'rotate' in kwargs:
             ax.tick_params(axis= 'x',
                            labelrotation= kwargs['rotate'])
 
-        _add_labels(self, ax)
+        self._add_labels(ax)
         
     def make_hist_plot(self, **kwargs):
         """
@@ -88,13 +95,13 @@ class BarPlot(PlotRoutine):
         
         Returns: None
         """
-        plt.figure(figsize=(12,8))
+        plt.figure(figsize=(6,4))
         ax = plt.hist(self.data)
         if 'annot' in kwargs:
-            _add_bar_annotation(self, ax, **kwargs)
+            self._add_bar_annotation(ax, **kwargs)
         if 'caption' in kwargs:    
-            _make_caption(self, **kwargs)  
-        _add_labels(self, ax)
+            self._make_caption(**kwargs)  
+        self._add_labels(ax)
         
     
                 
