@@ -20,6 +20,7 @@ pandas series for x and y values, x and y labels, and title
 `make_bar_plot` - optional key word agruements for caption, annotations, and annotation formatting.
 
 `make_hist_plot` - optional key word agruements for caption, annotations, and annotation formatting. Ignores y value inputs.
+(un-tested currently)
 
 ## `LinePlot.py`
 Class that can be call for producing line plots with availablity to handle to multiple categorical lines. 
