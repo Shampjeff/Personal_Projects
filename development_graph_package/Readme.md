@@ -33,3 +33,7 @@ pandas series for x and y values, x and y labels, and title
 
 `make_line_plot` - optional arguements for categorical hue, categorical annotations with corresponding values, and key word
 arguements for formatting and caption. 
+
+## `Style_sheet.mplstyle`
+This is a matplotlib specific style sheet for plotting. This file will overwrite other default styles choosen in
+`GeneralPlot.py`. 
