@@ -4,9 +4,10 @@ import scipy.stats
 
 import statistics
 from sklearn.model_selection import cross_val_predict, KFold
-from sklearn.preprocessing import Imputer
+from sklearn.preprocessing import MinMaxScaler
 #from sklearn.metrics import roc_auc_score
-
+##########################################################################
+# My generel template for ML model testing
 
 
 def test_model(df, model_instance, model_id, cv_folds=10, params=None):
@@ -55,8 +56,10 @@ def test_model(df, model_instance, model_id, cv_folds=10, params=None):
     
 #     df_1_over = df_1.sample(count_class_0, replace=True, random_state=12347)
 #     df = pd.concat([df_1_over, df_0], axis=0)
-    
-    X = df.drop('event', axis=1).values
+
+    scaler = MinMaxScaler()
+    scaled_x = scaler.fit_transform(X=df.drop('event', axis=1))
+    X = scaled_x
     y = df.event.values
     
     accuracies = []
