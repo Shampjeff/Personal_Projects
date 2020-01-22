@@ -1,10 +1,12 @@
 import pandas as pd
 import numpy as np
 import scipy.stats
+import matplotlib.pyplot as plt
 
 import statistics
 from sklearn.model_selection import cross_val_predict, KFold
 from sklearn.preprocessing import MinMaxScaler
+
 #from sklearn.metrics import roc_auc_score
 ##########################################################################
 # My generel template for ML model testing
@@ -129,3 +131,14 @@ def rank_top_performers(model_dict, metric='auc'):
         model_ids = [i[0] for i in models]
 
         return [model_dict[m] for m in model_ids]
+    
+def plot_features_importance(df, result):
+    #model = result['model']
+    feat_imp = pd.Series(
+        result.feature_importances_,
+        df.drop('event', axis=1).columns
+    ).sort_values(ascending=False)
+    plt.figure(figsize=(12,8))
+    plt.tight_layout()
+    feat_imp.plot(kind='bar', title='Feature Importances')
+    
