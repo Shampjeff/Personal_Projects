@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import statistics
 from sklearn.model_selection import cross_val_predict, KFold
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.imputer import SimpleImputer
+from sklearn.impute import SimpleImputer
 
 ##########################################################################
 # My generel template for ML model testing
@@ -70,7 +70,7 @@ def test_model(df, model_instance, model_id, cv_folds=10, params=None):
     
     folds = cv_folds
     k_fold = KFold(n_splits=folds, random_state=12347, shuffle=True)
-    med_imp = SimpleImputer(missing_values='NaN',strategy='median')
+    med_imp = SimpleImputer(strategy='median')
 
     kf = k_fold.split(X, y)
     for train_index, test_index in kf:
