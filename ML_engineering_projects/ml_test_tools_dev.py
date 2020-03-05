@@ -4,12 +4,23 @@ import scipy.stats
 import matplotlib.pyplot as plt
 
 import statistics
-from sklearn.model_selection import cross_val_predict, KFold
+from sklearn.model_selection import KFold
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.impute import SimpleImputer
-
+#cross_val_predict from model_selection in sklearn
 ##########################################################################
 # My generel template for ML model testing
+
+# TODO:
+# 1) Raise Exception for not having the correct imports i.e. Scaler, imputer
+#    These will be stored in the params arguement. 
+# 2) Auto index tested models. Required as input currently
+# 3) Add ROC SUC score and make it an on/off feature. Maybe a kwarg?
+# 4) Better unit testing and Exceptions - or any
+# 5) MLTestTool needs training data and target column to run
+#    parameter instances, and cv_folds are defined here as well. 
+#    maybe a data handling class is needed for just data and what to do with it
+#    MLTestTool could inherit the data from that parent class
 
 class MLTestTool:
     """
@@ -22,23 +33,35 @@ class MLTestTool:
         cv_folds: integer, number of folds for cross-validation
         params: dictionary of instances; scaler, imputer, etc that 
             maybe be need depending on the task. 
+            
     Key Word Arguements:
         impute: toogles an imputer instance in params
         scale: toggles a scaler instance in params
 
     """
 
-    def __init__(self, df, target, cv_folds=5, params=None, **kwargs):
+    def __init__(self, training_df, target, cv_folds=5, params=None, **kwargs):
         
-        self.df = df
+        self.df = training_df
         self.target = target
         self.cv_folds = cv_folds
         self.params = params
         self.random_seed = 945945
     
 # Evaluation Metrics
-    def test_model(self, model_instance, model_id, cv_folds=10, params=None, **kwargs):
+    def test_model(self, model_instance, model_id, **kwargs):
+        """
+            Function to perform the core machine learning analysis. 
+            Metrics are calculated in Cross Validation and stored as a dictionary
+            with average values and std. 
 
+            Arguement:
+                model_instance: The parameterized model you would like to test
+                model_id: An interger sequence to index the models tested
+
+            Returns: A dictionary of tested models with corresponding metrics
+        """
+    
         predictions = {}
         results = {}
     
@@ -78,13 +101,13 @@ class MLTestTool:
 ######################### Scale, CV, Imputation ################################   
 
         if 'scale' in kwargs:
-            scaler = params['scaler_instance']
+            scaler = self.params['scaler_instance']
             scaled_x = scaler.fit_transform(X=df.drop(self.target, axis=1))
             X = scaled_x
             y = df.event.values
         else:
-            X = self.df.drop(self.target,axis=1).values
-            y= self.df.target.values
+            X = self.df.values
+            y= self.target.values
             
         accuracies = []
         balanced_accuracies = []
@@ -97,10 +120,12 @@ class MLTestTool:
         y_tests = []
 
 
-        folds = cv_folds
-        k_fold = KFold(n_splits=folds, random_state=self.random_seed, shuffle=True)
+        k_fold = KFold(n_splits=self.cv_folds, 
+                       random_state=self.random_seed,
+                       shuffle=True)
+        
         if 'impute' in kwargs:
-            med_imp = params['imputer_instance']
+            med_imp = self.params['imputer_instance']
 
         kf = k_fold.split(X, y)
         for train_index, test_index in kf:
