@@ -1,3 +1,4 @@
 
 anomaly_detection_engine.py
 development_graph_package/.ipynb_checkpoints/KPI_periodical_report-checkpoint.ipynb
+*.ipynb_checkpoints/*
