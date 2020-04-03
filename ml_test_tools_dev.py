@@ -12,20 +12,17 @@ from sklearn.metrics import roc_auc_score
 # My generel template for ML model testing
 
 # TODO:
-# 0) Move the params call to `test_model()` method. Currently in __init__
 # 1) Raise Exception for not having the correct imports i.e. Scaler, imputer
 #    These will be stored in the params arguement. 
-# 2) Auto index tested models. TEST THIS
-# 3) Add ROC AUC score and make it an on/off feature. 
-#    Maybe a kwarg - should is always be calculated? can it?
 # 4) Better unit testing and Exceptions - or any
 # 5) MLTestTool needs training data and target column to run
 #    parameter instances, and cv_folds are defined here as well. 
 #    maybe a data handling class is needed for just data and what to do with it
-#    MLTestTool could inherit the data from that parent class
+#    MLTestTool could inherit the data from that parent class - open question
 # 6) Clean the data and update the features?? 
 # 7) Display full set of metrics for a given model: confusion matrix, 
 #    class report, and stored metrics.
+# 8) Generate ROC graph if auc is on?
 ##########################################################################
 
 class MLTestTool:
@@ -34,20 +31,19 @@ class MLTestTool:
     target varible and predictors must be flagged on input. 
     
     Attributes:
-        dataframe: the source of data in pandas dataframe format
+        training_df: The source of training data in pandas dataframe format
         target: The variable to be predicted
         cv_folds: integer, number of folds for cross-validation
-        params: dictionary of instances; scaler, imputer, etc that 
-            maybe be need depending on the task. 
 
     """
 
-    def __init__(self, training_df, target, cv_folds=5, params=None):
+    def __init__(self, training_df, target, cv_folds=5, include_auc=False):
         
         self.df = training_df
         self.target = target
         self.cv_folds = cv_folds
-        self.params = params
+        self.params = None
+        self.include_auc = include_auc
         self.results = {}
         self.predictions = {}
         self.model_id = 0
@@ -65,7 +61,7 @@ class MLTestTool:
                 'mean': round(np.mean(x), 4),
                 'sd': round(np.std(x), 4)
             }
-        
+    
 # Evaluation Metrics
 
     def calculate_accuracies(self, y_hat, y_test): 
@@ -96,25 +92,32 @@ class MLTestTool:
             return recall, precision, specificity, balanced_accuracy, f1_score
     
 
-    def test_model(self):
+    def test_model(self, params=None):
         """
             Function to perform the core machine learning analysis. 
             Metrics are calculated in Cross Validation and stored as a dictionary
             with average values and std. 
 
-            Arguement:
-                model_instance: The parameterized model you would like to test
+            Arguements:
+                params: A dictionary of parameters, "model_instance" is required. 
+                        Should be of the form:
+                        params={'model_instance': <desired model>,
+                                'scaler_instance': <optional scaler>,
+                                'imputer_instance': <optional imputer>}
+                
 
             Returns: A dictionary of tested models with corresponding metrics
         """
 
 ######################### Scale, CV, Imputation ################################   
 
+        self.params = params
+
         if 'scaler_instance' in self.params:
             scaler = self.params['scaler_instance']
-            scaled_x = scaler.fit_transform(X=df.drop(self.target, axis=1))
+            scaled_x = scaler.fit_transform(X=self.df)
             X = scaled_x
-            y = df.event.values
+            y = self.target.values
         else:
             X = self.df.values
             y= self.target.values
@@ -151,7 +154,8 @@ class MLTestTool:
             y_hat= trained_model.predict(X_test)
             y_hat_prob = [p[1] for p in trained_model.predict_proba(X_test)]
             accuracies.append(np.mean(y_hat == y_test)) 
-            #auc.append(roc_auc_score(y_test, y_hat_prob)) 
+            if self.include_auc:
+                auc.append(roc_auc_score(y_test, y_hat_prob)) 
 
             recall, precision, specificity, balanced_accuracy, f1_score =\
                 self.calculate_accuracies(y_hat, y_test)
@@ -167,18 +171,30 @@ class MLTestTool:
             
         
         model_id = self._make_model_id()
-        self.results[model_id] = { 
-            'model_id': model_id,
-            'model': model_instance,
-            'f1_score': self._make_result(f1_score),
-            'recall': self._make_result(recalls),
-            'precision': self._make_result(precisions),
-            'specificity': self._make_result(specificities),
-            'balanced_accuracy': self._make_result(balanced_accuracies),
-            'accuracy': self._make_result(accuracies)
-            #'auc':self._make_result(auc)
-        }
-
+        if self.include_auc:
+            self.results[model_id] = { 
+                'model_id': model_id,
+                'model': model_instance,
+                'f1_score': self._make_result(f1_score),
+                'recall': self._make_result(recalls),
+                'precision': self._make_result(precisions),
+                'specificity': self._make_result(specificities),
+                'balanced_accuracy': self._make_result(balanced_accuracies),
+                'accuracy': self._make_result(accuracies),
+                'auc':self._make_result(auc)
+            }
+        else:
+            self.results[model_id] = { 
+                'model_id': model_id,
+                'model': model_instance,
+                'f1_score': self._make_result(f1_score),
+                'recall': self._make_result(recalls),
+                'precision': self._make_result(precisions),
+                'specificity': self._make_result(specificities),
+                'balanced_accuracy': self._make_result(balanced_accuracies),
+                'accuracy': self._make_result(accuracies)
+            }
+            
         self.predictions[model_id] = {
             'prediction_probabilities': y_hat_probs,
             'y_test': y_tests,
@@ -188,19 +204,39 @@ class MLTestTool:
 ##################### Modeling ranking amd visualization #######################
 
     def rank_top_performers(self, metric='auc'):
+        """
+            Ranks models in the result dictionary by desired metric. 
+            
+            Arguements:
+                metric:  one of; 'f1_score', 'recall', 'precision',
+                        'specificity', 'balanced_accuracy', 'accuracy',
+                        or 'auc'. 
+            Returns: ordered list of the results dictionary
+        """
+        
+        models = [(v['model_id'], v[metric]) for k, v in self.results.items()]
+        models.sort(key=lambda x: x[1]['mean'], reverse=True)
+        model_ids = [i[0] for i in models]
 
-            models = [(v['model_id'], v[metric]) for k, v in self.results.items()]
-            models.sort(key=lambda x: x[1]['mean'], reverse=True)
-            model_ids = [i[0] for i in models]
-
-            return [self.results[m] for m in self.results]
+        return [self.results[m] for m in model_ids]
 
     def plot_features_importance(self, result):
+        """
+            Plots feature importance of models that retain feature weights. 
+            most likely usable in tree boosted models. 
+            
+            Arguments: result; the trained model instance.
+            Returns: Plot of ordered feature importance. 
+        """
+        
+        if not hasattr(result, 'feature_importances_'):
+            raise Exception('This model has no feature importances')
         feat_imp = pd.Series(
             result.feature_importances_,
-            self.df.drop(self.target, axis=1).columns
+            self.df.columns
         ).sort_values(ascending=False)
         plt.figure(figsize=(12,8))
         feat_imp.plot(kind='bar', title='Feature Importances')
         plt.tight_layout()
+        
     
