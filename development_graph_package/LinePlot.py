@@ -44,15 +44,16 @@ class LinePlot(PlotRoutine):
       
         if annot_labels != None:
             for i in range(len(annot_labels)):
+                # TEST THIS STRING LITERAL \/\/\/\/\/\/\/\/\/\/\
                 ax.annotate(
-                s=f"{annot_labels[i].title()}: {self._make_annotation_format(annot_values[i],**kwargs)}", 
+                s=(f"{annot_labels[i].title()}:" \
+                    f"{self._make_annotation_format(annot_values[i],**kwargs)}"), 
+                    # \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\
                     xy=(annot_x_value, annot_values[i]), 
                     fontsize=10,
                     xytext=(10,3),         
                     textcoords="offset points"
                             )
-                
-        
         
         if 'caption' in kwargs:
             self._make_caption(**kwargs)

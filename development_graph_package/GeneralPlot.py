@@ -1,6 +1,16 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+
+############################ TODO ########################
+# 1) Test formating exception in _make_annot_format()
+# 2) apply results of 1) to BarPlot
+# 3) Add some other plots. Or some kind of interface for 
+#    any plot in seaborn/matplotlib - seems hard
+# 4) Better way to make formats ??
+
+##########################################################
+
 class PlotRoutine:
     """
     A general plotting routine that builds on matplotlib and seaborn. Style is inherited. 
@@ -40,29 +50,38 @@ class PlotRoutine:
         plt.tight_layout()
         
     def _make_plot_style(self):
+        plt.style.use(self.style_list)
+        
+    def change_plot_style(self, base_style, modify_style):
         """
         Modify the plotting style sheet in matplotlib. 
         
         Arguements: 
-            original_style: The default style sheet in matplotlib or seaborn. 
+            base_style: The default style sheet in matplotlib or seaborn. 
                 Default is white_background.
                 
-            modify_style: The new style parameters to partiall 
+            modify_style: The new style parameters to partially 
                 overwrite the default style
         Returns: None
         """
-        plt.style.use(self.style_list)
+        self.style_list = [base_style, modify_style]
+        self.style = self._make_plot_style()
         
     def _make_annotation_format(self, y_value, **kwargs):
-        """
-        YOU NEED AN ERROR TO RAISE IF NO ANNOTATION FORMAT IS GIVEN
-        
+        """        
         Function to format annotations for plots
         
         Arguements: None
         
         Returns: label, formatted using kwargs
         """
+        
+        # TEST THIS \/\/\/\/\/\/\/
+        formats = ['money', 'int', 'round_0', 'round_1', 'round_2']
+        if not any(style in kwargs for style in formats):
+            raise Exception(f'annotation formats must be one of {formats}')
+        #/\/\/\/\/\/\/\/\/\/\/\/\/\/
+        
         if 'money' in kwargs:
             label = f"${int(y_value):,}"
                 
