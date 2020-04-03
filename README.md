@@ -4,6 +4,8 @@ A collection of personal projects in Python and SQL bigquery
 ## ML Test Tool
 A python class for general testing of a supervised machine learning task. Calculates metrics and stores results in a dictionary for customizable sorting by metric. Includes functionality for scaling and imputing values. 
 
+See `ml_test_tool_example` for a longer form tutorial of use. 
+
 ## Data Visualization Package
 A Python package that contains classes for handling data, formatting, plotting, annotationing, and captioniing of matplotlib/seaborn figures. There is a general plot class that supplies inhertance for the bar and line plot classes. Can be found in `development_graph_package` directory
 
