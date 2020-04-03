@@ -6,14 +6,14 @@ import matplotlib.pyplot as plt
 from sklearn.model_selection import KFold
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.impute import SimpleImputer
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_auc_score,roc_curve, auc
 
 ##########################################################################
 # My generel template for ML model testing
 
 # TODO:
 # 1) Raise Exception for not having the correct imports i.e. Scaler, imputer
-#    These will be stored in the params arguement. 
+#    These will be stored in the params arguement. TEST
 # 4) Better unit testing and Exceptions - or any
 # 5) MLTestTool needs training data and target column to run
 #    parameter instances, and cv_folds are defined here as well. 
@@ -112,7 +112,10 @@ class MLTestTool:
 ######################### Scale, CV, Imputation ################################   
 
         self.params = params
-
+        
+        if 'scaler_instance' in self.params.keys():
+            raise Exception('No scaler defined in params.' \
+                            'Use form {"scaler_instance":<scaler>}')
         if 'scaler_instance' in self.params:
             scaler = self.params['scaler_instance']
             scaled_x = scaler.fit_transform(X=self.df)
@@ -138,6 +141,9 @@ class MLTestTool:
                        random_state=self.random_seed,
                        shuffle=True)
         
+        if 'imputer_instance' in self.params.keys():
+            raise Exception('No imputer defined in params.' \
+                            'Use form {"imputer_instance":<imputer>}')
         if 'imputer_instance' in self.params:
             med_imp = self.params['imputer_instance']
 
@@ -239,4 +245,34 @@ class MLTestTool:
         feat_imp.plot(kind='bar', title='Feature Importances')
         plt.tight_layout()
         
-    
+    def plot_ROC(self, model_id):
+        if not self.include_auc:
+            raise Exception("ROC AUC score has not been calculated." \
+                           "Use include_auc=True and re-run test_model()")
+            
+        roc_model = self.results[model_id]['model']
+        roc_train = self.test_model({'model_instance':roc_model})
+        tested_models = len(self.results)-1
+        
+        lw = 2
+        fpr = dict()
+        tpr = dict()
+        roc_auc = dict()
+        for i in range(2):
+            fpr[i], tpr[i], _ = roc_curve(
+                self.predictions[tested_models]['y_test'],
+                self.predictions[tested_models]['prediction_probabilities']
+            )
+            roc_auc[i] = auc(fpr[i], tpr[i])
+        print(roc_model)
+        plt.figure(figsize=(12,8))
+        plt.plot(fpr[0], tpr[0], color='darkorange',
+                 lw=lw, label='ROC curve (area = %0.4f)' % roc_auc[0])
+        plt.plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
+        plt.xlim([0.0, 1.0])
+        plt.ylim([0.0, 1.05])
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.title('Receiver operating characteristic example')
+        plt.legend(loc="lower right")
+        plt.show()
