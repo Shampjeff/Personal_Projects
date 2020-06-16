@@ -12,6 +12,9 @@ A Python package that contains classes for handling data, formatting, plotting, 
 ## BigQuery - SQL queries for NYC Open Data
 Practice working with Google BigQuery while using NYC Open Data to answer questions such as the longest CitiBike ride, how dangerous it is to ride a bike in New York (very, especially in BK!), and which addresses get the most noise complaints in my neighborhood. 
 
+## Web Crawler Template in Scrapy
+A basic template and outline for a web crawler using the scrapy package. An example of how to scrape some course outlines from the website DataCamp are included. This is a basic set up that was outlined in a DataCamp course. 
+
 ## Comment Analyzer 
 NLP early work into the numerical analysis of sentiment of my own teacher comments. Identification of good and bad comments as well as NMF for topic modeling from several years of comments. 
 
