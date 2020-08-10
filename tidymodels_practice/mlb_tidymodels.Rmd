@@ -1,0 +1,160 @@
+---
+title: "Linear Regression with Tidymodels"
+author: "Jeff Shamp"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: github
+---
+
+# Introduction
+
+Continuing to get up to speed with tidymodels we visit the most common form of regression analysis, linear. We will also (hopefully) look at some Bayesian appraoches as well using the MLB data set from CUNY MSDS 606 course. The goal here is to predict runs scored based on the various metrics that gather for each baseball team. 
+
+
+# Data
+
+We will be using the MLB 2011 stats file from a lab used in Data 606 with Dr. Bryer. See the [readme file](https://github.com/Shampjeff/cuny_msds/blob/master/DATA_606/labs/lab8/more/mlb11-readme.txt) associated with the data for more information. 
+
+```{r message=FALSE, warning=FALSE, eval=FALSE}
+easypackages::libraries("tidyverse", "tidymodels")
+```
+
+
+```{r}
+url<-"https://raw.githubusercontent.com/Shampjeff/cuny_msds/master/DATA_606/labs/lab8/more/mlb11.csv"
+data<- 
+  RCurl::getURL(url) %>%
+  read_csv()
+glimpse(data)
+```
+
+
+## Exploratory Data Analysis
+
+Let's look at some of the data in terms of the correlation to runs scored. 
+
+```{r}
+data %>%
+  ggplot() + 
+  geom_point(aes(x=at_bats, y=runs)) +
+  labs(title="At-bats v. Runs")
+
+data %>%
+  ggplot() + 
+  geom_point(aes(x=homeruns, y=runs)) +
+  labs(title="Homers v. Runs")
+
+data %>%
+  ggplot() + 
+  geom_point(aes(x=new_onbase, y=runs)) + 
+  labs(title="New On Base Percent v. Runs")
+
+data %>%
+  ggplot() + 
+  geom_point(aes(x=new_slug, y=runs)) + 
+  labs(title="New Slugging Percent v. Runs")
+
+```
+
+We see that the new stats like slugging, and on-base percents are much better correlated with runs than at-bats or homeruns. Turns out the nerds were right about what makes a winning team. 
+
+
+```{r}
+linear_model_old<- 
+  linear_reg() %>%
+  set_engine("lm") %>%
+  fit(runs ~ ., data=data %>% 
+                select(runs, at_bats, hits, homeruns, bat_avg))
+tidy(linear_model_old)
+```
+
+
+
+```{r}
+linear_model_new<- 
+  linear_reg() %>%
+  set_engine("lm") %>%
+  fit(runs ~ ., data=data %>% 
+                select(runs, new_onbase, new_obs, new_slug))
+tidy(linear_model_new)
+```
+
+There don't appear to be any residuals that we can access from this model. That would be a major downside. Work around????
+
+
+```{r}
+# Make predictions
+preds_self_new<- predict(linear_model_new, 
+                         new_data = data %>%
+                                    select(runs, new_onbase,
+                                           new_obs, new_slug))
+# calculate residuals from predictions
+data<-
+  data %>%
+  bind_cols(preds_self_new) %>%
+  rename(prediction=.pred) %>%
+  mutate(resid_lm = runs-prediction) 
+```
+
+
+
+
+
+```{r}
+data %>%
+  ggplot() +
+  geom_histogram(aes(x=resid_lm))
+
+data %>%
+  ggplot(aes(x=runs, resid_lm)) +
+  geom_point() +
+  geom_smooth(method = "loess",se = FALSE)
+
+```
+
+The residuals object is gone in the tidymodels :(, but we can somewhat easily re-make them as columns in the dataframe. 
+
+```{r}
+data<-
+  data %>%
+  bind_cols(
+    predict(
+      linear_model_old,
+      new_data = data %>%
+        select(runs, at_bats, hits, homeruns, bat_avg),
+    )
+  ) %>%
+  rename(prediction_old = .pred) %>%
+  mutate(resid_lm_old = runs - prediction_old)
+  
+```
+
+
+```{r}
+data %>%
+  ggplot(aes(x=resid_lm_old)) +
+  geom_histogram()
+
+data %>%
+  ggplot(aes(x=runs, y=resid_lm_old)) +
+  geom_point() + 
+  geom_hline(yintercept = 0, linetype='dashed', color='red')
+```
+
+
+```{r}
+data %>%
+  ggplot()+
+  geom_point(aes(x=runs, y=prediction), color="red") + 
+  geom_point(aes(x=runs, y=prediction_old), color="blue") +
+  geom_line(aes(x=runs, y=runs), color="black")
+```
+
+
+
+
+
+
+

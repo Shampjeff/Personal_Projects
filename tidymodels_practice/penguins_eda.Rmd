@@ -1,0 +1,117 @@
+---
+title: "Palmer Penguin Exploration"
+author: "Jeff Shamp"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: vignette
+---
+
+## Release the Penguins!
+
+Since the R studio people have been repping the Palmer Penguin dataset recently, I figure I would check it out while continuing to practice tidyverse and tidymodels. 
+
+```{r, message=FALSE}
+library(tidyverse)
+library(tidymodels)
+library(palmerpenguins)
+library(xgboost)
+set.seed(9450)
+```
+
+
+## Get Data
+
+```{r}
+penguin_df<- palmerpenguins::penguins
+```
+
+
+## Explore Data
+
+```{r}
+penguin_df %>%
+  ggplot(aes(body_mass_g, flipper_length_mm, color=species)) +
+  geom_point()
+
+```
+
+```{r}
+penguin_df %>%
+  ggplot(aes(bill_length_mm, bill_depth_mm, color=species)) +
+  geom_point() 
+```
+
+
+```{r, message=FALSE}
+penguin_df %>%
+  group_by(species) %>%
+  summarise(avg = mean(flipper_length_mm, na.rm = TRUE), 
+            std_mass = sd(body_mass_g, na.rm = TRUE), 
+            count_species = n()) %>%
+  mutate( 
+    std_err = std_mass/sqrt(count_species), 
+    lower_ci_99 = avg - (2.576 * std_err),  
+    upper_ci_99 = avg + (2.576 * std_err),
+    lower_ci_90 = avg - (1.645 * std_err),  
+    upper_ci_90 = avg + (1.645 * std_err)
+    ) %>%
+  ggplot(aes(species, avg, fill=species)) +
+  geom_crossbar(aes(ymin=lower_ci_90, ymax=upper_ci_90), 
+                width=0.4, show.legend = FALSE, alpha = 0.5) + 
+  geom_crossbar(aes(ymin=lower_ci_99, ymax=upper_ci_99), 
+                width=0.3, show.legend = FALSE, alpha=0.2, color = "NA") + 
+  coord_flip( )
+```
+
+
+
+
+```{r}
+penguin_recipe<-
+  recipe(species ~ ., data=penguin_df) %>%
+  step_meanimpute(bill_length_mm, bill_depth_mm,
+                  flipper_length_mm, body_mass_g) %>%
+  step_knnimpute(sex)
+```
+
+
+```{r}
+xgb_model <- 
+  boost_tree() %>%
+  set_mode("classification") %>%
+  set_engine("C5.0")
+
+data_split<-initial_split(penguin_df, prop=.80)
+train_data<- training(data_split)
+test_data<- testing(data_split)
+
+xgb_model
+```
+
+
+```{r}
+xgb_wf<-
+  workflow() %>%
+  add_recipe(penguin_recipe) %>%
+  add_model(xgb_model)
+
+xgb_wf
+```
+
+
+```{r}
+xgb_results %>%
+  last_fit(data_split) %>%
+  collect_predictions() %>%
+  conf_mat(truth = species, estimate = .pred_class)
+```
+
+```{r}
+xgb_results %>%
+  last_fit(data_split) %>%
+  collect_metrics()
+```
+
+

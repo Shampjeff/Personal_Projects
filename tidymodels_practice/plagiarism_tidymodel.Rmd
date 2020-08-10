@@ -1,0 +1,140 @@
+---
+title: "XGB Grid Tune with Tidymodels"
+author: "Jeff Shamp"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: github
+---
+
+```{r warning=FALSE, message=FALSE}
+library(tidyverse)
+library(tidymodels)
+library(xgboost)
+set.seed(9450)
+```
+
+
+# Intro
+
+Continuing to explore the functionality of tidymodels by re-working previous problems with new tools. To that end, we are looking at text similarity data from the 607 final project from CUNY SPS MSDS Spring Semester 2020. This data has already been created and written to a `.csv` file. This markdown file is simply to try out tuning options with XGBoost in the tidymodels framework. See this [github repo](https://github.com/Shampjeff/607_final_project) for details. 
+
+# Data
+
+The data is already in csv format and split into training and testing sets. I will actually recombine them first because the functionality in tidymodels makes it easy to use one data object. 
+
+```{r warning=FALSE, message=FALSE}
+train_path<- paste0("/Users/jeffshamp/Documents/Github/607_final_project/plagiarism_data/train.csv")
+test_path<- paste0("/Users/jeffshamp/Documents/Github/607_final_project/plagiarism_data/test.csv")
+train_data<-read_csv(train_path, col_names = c("class", "c_1", "c_2", "c_3", "c_4", "lcs_score"))
+test_data<- read_csv(test_path, col_names = c("class", "c_1", "c_2", "c_3", "c_4", "lcs_score"))
+```
+
+With the data loaded and columns named, we can easily bind them and do the necessary spilts. 
+
+```{r}
+data<- 
+  train_data %>%
+  bind_rows(test_data)
+data$class<- as.factor(data$class)
+data_split<-
+  initial_split(data, prop=.80)
+train_data<- training(data_split)
+test_data<- testing(data_split)
+```
+
+
+# Modeling
+
+First, we will need to spec-out a model and define a bunch of features to tune in XGB. Using recipes and workflows makes this pretty nice, so I'll use those here. The data is already processed and ready for modeling so the recipe will be pretty light. 
+
+```{r}
+xgb_specs <- 
+  boost_tree(
+    trees = 500, 
+    tree_depth = tune(), min_n = tune(), 
+    loss_reduction = tune(),                     
+    sample_size = tune(), mtry = tune(),         
+    learn_rate = tune()
+  ) %>%
+  set_engine("xgboost") %>%
+  set_mode("classification")
+
+xgb_grid <- 
+  grid_latin_hypercube(
+    tree_depth(),
+    min_n(),
+    loss_reduction(),
+    sample_size = sample_prop(),
+    finalize(mtry(), train_data),
+    learn_rate(),
+    size = 30
+)
+
+xgb_wf<-
+  workflow() %>%
+  add_formula(class ~ .) %>%
+  add_model(xgb_specs)
+```
+
+
+
+```{r}
+cv_folds<- vfold_cv(train_data,
+                    v = 5, repeats = 1)
+
+xgb_results<-
+  tune_grid(
+    xgb_wf,
+    resamples = cv_folds,
+    grid = xgb_grid,
+    control = control_grid(save_pred = TRUE)
+)
+```
+
+We can pull best performing models according to metrics, which is nice. Let's see if there is a difference in accuarcy or ROC WUC.
+
+```{r}
+best_model_auc <- select_best(xgb_results, "roc_auc")
+best_model_acc <- select_best(xgb_results, "accuracy")
+```
+
+Finalize workflow with the best models and print a confusion matrix. 
+
+```{r}
+final_xgb_auc<-
+  finalize_workflow(
+    xgb_wf,
+    best_model_auc
+)
+
+final_xgb_auc %>%
+  last_fit(data_split) %>%
+  collect_predictions() %>%
+  conf_mat(truth = class, estimate = .pred_class)
+```
+
+
+```{r}
+final_xgb_acc<-
+  finalize_workflow(
+    xgb_wf,
+    best_model_acc
+)
+
+final_xgb_acc %>%
+  last_fit(data_split) %>%
+  collect_predictions() %>%
+  conf_mat(truth = class, estimate = .pred_class)
+```
+
+No difference in that they both are amazing. XGB is like cheating. 
+
+
+
+
+
+
+
+
