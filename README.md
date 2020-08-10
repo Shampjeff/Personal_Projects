@@ -18,5 +18,8 @@ A basic template and outline for a web crawler using the scrapy package. An exam
 ## Comment Analyzer 
 NLP early work into the numerical analysis of sentiment of my own teacher comments. Identification of good and bad comments as well as NMF for topic modeling from several years of comments. 
 
+## TidyModels Practice
+Practice working with the tidymodels framework. Also EDA with the various datasets and tidyverse functionality. 
+
 ## Bootcamp, Graduate School, Job Application Tech Assessments. 
 Various types and styles of questions I've been asked for technical assessments for admission and interviews. I've learned a lot from working on these and even more from reviewing them periodically. 
