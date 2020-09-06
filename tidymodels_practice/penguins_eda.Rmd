@@ -47,17 +47,17 @@ penguin_df %>%
 ```{r, message=FALSE}
 penguin_df %>%
   group_by(species) %>%
-  summarise(avg = mean(flipper_length_mm, na.rm = TRUE), 
-            std_mass = sd(body_mass_g, na.rm = TRUE), 
+  summarise(avg_flipper = mean(flipper_length_mm, na.rm = TRUE), 
+            std_flipper = sd(flipper_length_mm, na.rm = TRUE), 
             count_species = n()) %>%
   mutate( 
-    std_err = std_mass/sqrt(count_species), 
-    lower_ci_99 = avg - (2.576 * std_err),  
-    upper_ci_99 = avg + (2.576 * std_err),
-    lower_ci_90 = avg - (1.645 * std_err),  
-    upper_ci_90 = avg + (1.645 * std_err)
+    std_err = std_flipper/sqrt(count_species), 
+    lower_ci_99 = avg_flipper - (2.576 * std_err),  
+    upper_ci_99 = avg_flipper + (2.576 * std_err),
+    lower_ci_90 = avg_flipper - (1.645 * std_err),  
+    upper_ci_90 = avg_flipper + (1.645 * std_err)
     ) %>%
-  ggplot(aes(species, avg, fill=species)) +
+  ggplot(aes(species, avg_flipper, fill=species)) +
   geom_crossbar(aes(ymin=lower_ci_90, ymax=upper_ci_90), 
                 width=0.4, show.legend = FALSE, alpha = 0.5) + 
   geom_crossbar(aes(ymin=lower_ci_99, ymax=upper_ci_99), 
@@ -102,14 +102,14 @@ xgb_wf
 
 
 ```{r}
-xgb_results %>%
+xgb_wf %>%
   last_fit(data_split) %>%
   collect_predictions() %>%
   conf_mat(truth = species, estimate = .pred_class)
 ```
 
 ```{r}
-xgb_results %>%
+xgb_wf %>%
   last_fit(data_split) %>%
   collect_metrics()
 ```

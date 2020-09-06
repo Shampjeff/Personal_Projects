@@ -63,7 +63,7 @@ We see that the new stats like slugging, and on-base percents are much better co
 
 ```{r}
 linear_model_old<- 
-  linear_reg() %>%
+  parsnip::linear_reg() %>%
   set_engine("lm") %>%
   fit(runs ~ ., data=data %>% 
                 select(runs, at_bats, hits, homeruns, bat_avg))
