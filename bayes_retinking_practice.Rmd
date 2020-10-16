@@ -1,0 +1,67 @@
+---
+title: "Statistical Rethinking - Practice"
+author: "Jeff Shamp"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: github
+---
+
+## Statistical Rethinking
+
+
+Second Edition by Richard McElreath. This is practice work from his book. Meant to develop a better understanding of Bayesian statistical modeling with R, and STAN. 
+
+## Chapter 3
+
+```{r}
+p_grid<- seq(from =0, to=1, length.out=100)
+prior<- rep(1,100)
+likelihood<- dbinom(6, size=9, prob=p_grid)
+posterior<- likelihood *prior
+posterior<- posterior/ sum(posterior)
+```
+
+```{r}
+set.seed(100)
+samples<- sample(p_grid, prob=posterior, size=1e4, replace=TRUE)
+```
+
+
+```{r}
+sum(samples > 0.8 )/length(samples)
+```
+
+```{r}
+quantile(samples, 0.2)
+```
+
+```{r}
+1 - quantile(samples, 0.8) 
+```
+
+
+```{r}
+rethinking::HPDI(samples, prob=.66)
+```
+
+```{r}
+x<- c(0,1)
+prior<- ifelse(p_grid < 0.5, 0, 1)
+likelihood<- dbinom(8,size=15, prob=p_grid)
+posterior<- likelihood * prior
+posterior<- posterior / sum(posterior)
+```
+
+```{r}
+samples<- sample(p_grid, prob=posterior, size=1e4, replace = TRUE)
+```
+
+
+```{r}
+
+```
+
+
+

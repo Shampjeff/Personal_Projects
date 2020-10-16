@@ -1,0 +1,209 @@
+---
+title: "BxD Data Assessment"
+author: "Jeff Shamp"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: github
+---
+
+## Question 1 - SQL
+**Using the data dictionary on the following page, please write a SQL query to get the top five most frequent felony charges for cases opened in the last three months.**
+
+
+“Charge1a” in the cases table is assumed to be the primary key to “charge” in the charge codes table. This is using the POSTGRES flavor of SQL. 
+
+
+```{markdown}
+WITH charges_freq AS ( 
+	SELECT DISTINCT cc.label AS charge, 
+		   COUNT(*) AS frequency, 
+		   RANK() OVER(ORDER BY COUNT(*) DESC) AS ranking 
+	FROM cases AS c 
+	JOIN charge_codes AS cc 
+		ON cc.charge = c.charge1a 
+	WHERE c.open_date >= date_trunc('month', now()) - interval '3 month' AND 
+		  c.open_date < date_trunc('month', now()) AND 
+		  cc.charge_class= ‘felony’ 
+	GROUP BY cc.label 
+	) 
+SELECT charge, frequency 
+FROM charges_freq 
+WHERE ranking <=5 
+ORDER BY ranking 
+””” 
+```
+
+
+## Question 2
+* **Please share two telling pieces of information in the form of data visualizations. These can be basic descriptive statistics or analysis of trends.**
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8, 
+                      message = FALSE, echo=FALSE, 
+                      warning = FALSE) 
+```
+
+
+```{r}
+library(tidyverse)
+ccrb_df<- read.csv("https://raw.githubusercontent.com/new-york-civil-liberties-union/NYPD-Misconduct-Complaint-Database/master/CCRB_database_raw.csv")
+```
+
+
+```{r}
+ccrb_df<- 
+  ccrb_df %>%
+  unite(full_name, First.Name:Last.Name, remove=FALSE, sep=" ") %>%
+  mutate(full_name = as_factor(full_name))
+```
+
+Let's first look at some basic summary statistics on Commands and allegation types. 
+
+```{r}
+ccrb_df<- 
+  ccrb_df %>%
+  mutate(Allegation = str_to_lower(Allegation), 
+         Allegation = str_replace_all(Allegation, pattern = "-|/", " ")
+         ) 
+
+top_violations_cmd<-
+  ccrb_df %>%
+  group_by(Command, FADO.Type, Allegation) %>%
+  summarise(freq = n()) %>%
+  arrange(desc(freq)) %>%
+  filter(Allegation != 'null') %>%
+  ungroup()
+#knitr::kable(head(top_violations_cmd, 10))
+```
+
+Intelligence, warrants, narcotics in the Bronx are the top commands in allegations. Then the PCTs; 44 is in the Bronx,  75 is East New York, and 120 is Staten Island - Daniel Pantaleo was an officer in the 120 pct. 
+
+Let's next link individuals within the commands.
+
+```{r}
+name_freq<-
+  ccrb_df %>%
+  group_by(Command, full_name) %>%
+  summarize(officer_count = n()) %>%
+  arrange(desc(officer_count))
+knitr::kable(head(name_freq,10))
+```
+
+### Culture of Misconduct
+
+Which commands potentially have a culture of misconduct. Are there commands with a high number of officers who have many complaints?
+
+We will try to determine which commands have very high offending officers relative to the mean number of complaints in that command. The proxy association here is that if a commnad has a high average number of complaints and several officers well above that average, then perhaps the command is taking an indifferent or defiant stance on civilan complaints. 
+
+```{r}
+cmd_name_df<-
+  ccrb_df %>%
+  group_by(Command) %>%
+  summarise(command_count = n()) %>%
+  inner_join(
+    y=name_freq
+            ) %>%
+  group_by(Command) %>%
+  mutate(officer_avg_per_command = mean(officer_count, na.rm = TRUE), 
+         officer_std = sd(officer_count, na.rm=TRUE)) %>%
+  ungroup()
+```
+
+```{r}
+cmd_name_df %>%
+  filter(officer_count > officer_avg_per_command + 2*officer_std,
+         officer_avg_per_command > 5) %>%
+  group_by(Command) %>%
+  summarize(count_high_offenders = n()) %>%
+  filter(count_high_offenders > 5) %>%
+  ggplot(aes(x=fct_reorder(Command,
+                         count_high_offenders),
+             y=count_high_offenders)) +
+  geom_col(fill = 'aquamarine4', show.legend = FALSE) +
+  geom_text(aes(label=count_high_offenders), hjust=-0.2) +
+  labs(x='Command', y='Number of High Offenders',
+       title="Commands with Many High Offending Officers",
+      subtitle="Complaints greater than two deviations from a command mean greater than five") +
+  coord_flip() +
+  theme_linedraw()
+```
+
+### One Hundred or More Complaints. 
+
+There are around a dozen officers with more than one hundred complaints. Let's explore those complaint histories. 
+
+```{r}
+hundred_complaints<-
+cmd_name_df %>%
+  filter(officer_count >= 100) %>%
+  select(full_name) 
+
+hundred_complaint_df<-
+  ccrb_df %>%
+  mutate(Incident.Date = lubridate::mdy(Incident.Date)) %>%
+  filter(full_name %in% hundred_complaints$full_name) %>%
+  group_by(full_name, Incident.Date) %>%
+  mutate(run_count = row_number()) %>%
+  ungroup() %>%
+  group_by(Incident.Date, full_name) %>%
+  mutate(total_on_date = max(run_count))
+
+```
+
+There seems to be two categories of high offender. The "peak" offender with (typically) one peak event, and a consistent offender with long history of offenses. It seems that all but one of 100+ complaint officers who have very high peaks tend to have shorter complaint periods. As in, they only have complaints stretching over less than 10 years. The consistent offenders tend to have 20+ years of 3-10 complaints per year, which is troubling. 
+
+```{r}
+peak_off<- c("John Coghlan", "Robert Currie", "Michael Elliott", "George Whalen")
+consis_off<- c("Edward Milmore","Dennis Ferber", "Robert Martinez", "Steven Deluca", 
+               "Gary Messina", "Raymond Johnson", "Glen Halfhide", "Ivan Montero")
+hundred_complaint_df %>%
+  filter(full_name %in% peak_off) %>%
+  ggplot(aes(Incident.Date, y=total_on_date, color=full_name)) +
+  theme(legend.position = "top") +
+  geom_point(size=1.5, na.rm=TRUE, show.legend = FALSE) +
+  labs(x="Incident Date", y="Total",
+       title="Officer Complaint Histories") +
+  facet_wrap(~full_name) +
+  scale_y_log10() +
+  theme_linedraw()
+
+hundred_complaint_df %>%
+  filter(full_name %in% consis_off) %>%
+  ggplot(aes(Incident.Date, y=total_on_date, color=full_name)) +
+  theme(legend.position = "top") +
+  geom_point(na.rm=TRUE, size=1.5, show.legend = FALSE) +
+  labs(x="Incident Date", y="Total",
+       title="Officer Complaint Histories") +
+  facet_wrap(~full_name) +
+  scale_y_log10() +
+  theme_linedraw()
+
+```
+
+* **What are some of the limitations of this data? Are there any data points that you would want added to the dataset to provide more relevant details?**
+
+I think the biggest limitation is that we only have the complaints and not all officer interactions. As such, we cannot directly know from this data the rate at which a given officer commits a complaint worthy action. It also would be great to have more data that gives context to the officer-civilian interaction. Did a given complaint come from a traffic stop, a four-year investigation that lead to a warrant, or a warrant for failure to appear regarding a minor summons? 
+
+
+```{r}
+ccrb_df %>%
+  mutate(Incident.Date = lubridate::mdy(Incident.Date)) %>%
+  filter(Command == "WARRSEC", Incident.Date > "1984-01-01") %>%
+  arrange(Incident.Date) %>%
+  group_by(Complaint.Id, Incident.Date) %>%
+  summarize(freq = n()) %>%
+  ggplot(aes(x=Incident.Date, y=freq)) +
+  geom_point() +
+  labs(title="WARRSEC complaints by complaint id", y="count", x="date")
+  theme_classic()
+
+```
+
+
+
+
+
+
+
