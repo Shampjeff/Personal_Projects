@@ -186,17 +186,30 @@ hundred_complaint_df %>%
 
 I think the biggest limitation is that we only have the complaints and not all officer interactions. As such, we cannot directly know from this data the rate at which a given officer commits a complaint worthy action. It also would be great to have more data that gives context to the officer-civilian interaction. Did a given complaint come from a traffic stop, a four-year investigation that lead to a warrant, or a warrant for failure to appear regarding a minor summons? 
 
-
 ```{r}
+ccrb_df %>% select(Command) %>%
+  group_by(Command) %>% summarise(count = n()) %>% arrange(desc(count))
+```
+
+
+
+```{r, fig.height=7, fig.width=5, message=FALSE, warning=FALSE}
+command_bx_down<- c()
+command_bx<- c("NARCBBX","040 PCT","041 PCT",
+               "042 PCT","043 PCT","044 PCT","044 PCT",
+               "045 PCT","046 PCT", "047 PCT","048 PCT",
+               "049 PCT", "050 PCT", "051 PCT", "052 PCT",
+               "DA BX","BX CT","BXROBSQ")
 ccrb_df %>%
   mutate(Incident.Date = lubridate::mdy(Incident.Date)) %>%
-  filter(Command == "WARRSEC", Incident.Date > "1984-01-01") %>%
+  filter(Command %in% command_bx , Incident.Date > "1984-01-01") %>%
   arrange(Incident.Date) %>%
-  group_by(Complaint.Id, Incident.Date) %>%
+  group_by(Complaint.Id, Incident.Date, Command) %>%
   summarize(freq = n()) %>%
-  ggplot(aes(x=Incident.Date, y=freq)) +
-  geom_point() +
-  labs(title="WARRSEC complaints by complaint id", y="count", x="date")
+  ggplot(aes(x=Incident.Date, y=freq, color=Command)) +
+  geom_smooth(alpha=0.5) +
+  facet_wrap(~Command) +
+  labs(title="Bronx Command complaints", y="count", x="date")
   theme_classic()
 
 ```
